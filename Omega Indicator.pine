@@ -1,0 +1,53 @@
+// © agp8
+//@version=4
+
+study(title="DMI + RSI + CC + MA Distance", shorttitle="DMI + RSI + CC + MA Distance", format=format.price, precision=2, resolution="")
+
+print_RSI = input(true, "Dibujar RSI")
+print_DMI = input(false, "Dibujar DMI")
+print_MA_Distance = input(false, "Dibujar Distancia a la MA")
+print
+
+//Seccion RSI
+rsi_len = input(21, minval=1, title="RSI Length")
+src = input(close, "RSI Source", type = input.source)
+rsi_up = rma(max(change(src), 0), rsi_len)
+rsi_down = rma(-min(change(src), 0), rsi_len)
+rsi = rsi_down == 0 ? 100 : rsi_up == 0 ? 0 : 100 - (100 / (1 + rsi_up / rsi_down))
+plot( (print_RSI ? rsi : na ) , color=#7E57C2)
+band1 = hline(70, "Upper Band", color=iff(print_RSI, #787B86, na))
+bandm = hline(50, "Middle Band", color=iff(print_RSI, color.new(#787B86, 50), na))
+band0 = hline(30, "Lower Band", color=iff(print_RSI, #787B86, na))
+fill( band1, band0, color=iff(print_RSI, color.rgb(126, 87, 194, 90), na), title="Background")
+
+//Seccion DMI
+lensig = input(14, title="ADX Smoothing", minval=1, maxval=50)
+dmi_len = input(14, minval=1, title="DI Length")
+dmi_up = change(high)
+dmi_down = -change(low)
+plusDM = na(dmi_up) ? na : (dmi_up > dmi_down and dmi_up > 0 ? dmi_up : 0)
+minusDM = na(dmi_down) ? na : (dmi_down > dmi_up and dmi_down > 0 ? dmi_down : 0)
+trur = rma(tr, dmi_len)
+plus = fixnan(100 * rma(plusDM, dmi_len) / trur)
+minus = fixnan(100 * rma(minusDM, dmi_len) / trur)
+sum = plus + minus
+adx = 100 * rma(abs(plus - minus) / (sum == 0 ? 1 : sum), lensig)
+plot(print_DMI ? adx : na , color=color.black, title="ADX", style=plot.style_circles, linewidth=1)
+plot(print_DMI ? plus : na , color= color.new(color.green, 15), title="+DI", style=plot.style_line)
+plot(print_DMI ? minus : na , color= color.new(color.red, 85), title="-DI", style=plot.style_area)
+
+//Seccion MA Distance
+ma_length = input(21, minval=1, title="Length of distance's MA")
+ma_type = input(defval="EMA", options=["SMA", "EMA", "WMA"], title="type of distance's MA")
+ma_src = input(close, type = input.source, title="Source of distance's MA")
+distance(ma_type, ma_src, ma_length) =>
+    if(ma_type == "SMA")
+        sma(ma_src, ma_length)
+    else 
+        if(ma_type == "EMA")
+            ema(ma_src, ma_length)
+        else 
+            if(ma_type == "WMA")
+                wma(ma_src, ma_length)
+plot(print_MA_Distance ? ((((ma_src)/distance(ma_type, ma_src, ma_length))-1)*100) : na ) //si calculo la MA en base a 'x' src, que el precio a tener en cuenta para la distancia sea en base al mismmo 'x' src de la MA.
+cero_line = hline(0, "Cero Line", color=iff(print_MA_Distance, color.black, na), linestyle=hline.style_solid)
